@@ -530,20 +530,25 @@ impl Renderer for HtmlHandlebars {
                                   build_dir.to_str().unwrap(),
                                   );
 
-        let mut data = make_data(&ctx.root, book, &ctx.config, &html_config, &theme)?;
-
+        let mut data =  make_data(&ctx.root, book, &ctx.config,
+                                 &html_config, &theme)?;
+        println!("Create data::");
+        //println!("{}",data.to_str());
         // Print version
         let mut print_content = String::new();
 
         fs::create_dir_all(&destination)
             .with_context(|| "Unexpected error when constructing destination path")?;
 
+        // take the chapters out and clone it
+        
         let mut is_index = true;
+        //        let u = 
         for item in book.iter() {
             let ctx = RenderItemContext {
                 handlebars: &handlebars,
                 destination: destination.to_path_buf(),
-                data: data.clone(),
+                data:  & mut data, //.clone() ,
                 is_index,
                 book_config: book_config.clone(),
                 html_config: html_config.clone(),
@@ -965,7 +970,7 @@ fn partition_source(s: &str) -> (String, String) {
 struct RenderItemContext<'a> {
     handlebars: &'a Handlebars<'a>,
     destination: PathBuf,
-    data: serde_json::Map<String, serde_json::Value>,
+    data:  & 'a  mut serde_json::Map<String, serde_json::Value>,
     is_index: bool,
     book_config: BookConfig,
     html_config: HtmlConfig,

@@ -42,31 +42,32 @@ impl HelperDef for RenderToc {
         // param is the key of value you want to display
         //println!("I am here {}", rc);
         //rc.done = true;
- 
-        let chapters = rc.evaluate(ctx, "@root/chapters").and_then(|c| {
-            serde_json::value::from_value::<Vec<BTreeMap<String, String>>>(c.as_json().clone())
-                .map_err(|_| RenderError::new("Could not decode the JSON data"))
-        })?;
-
-        if get_log_level() == 3 {
-            println!("a;aha {}", get_log_level());
-            
-
-        } else {
-            println!("a;aha {}", get_log_level())
-        }
-
-//        println!("a;aha {}", ctx.data());
-        println!("path {}", ctx.data().get("path").unwrap());
-
         let d =  ctx.data().get("path").unwrap();
         //let build_dir = ctx.root.join(&ctx.config.build.build_dir);
         println!("build_dir : {}", self.a);
 
         if d != "index.md" { //get_log_level() == 3 {
-            let s = "\n<iframe src=\"c.shtml\" seamless onload=\"this.before((this.contentDocument.body||this.contentDocument).children[0]);this.remove()\"></iframe>\n";
+            let s = "\n<iframe src=\"toc.shtml\" seamless onload=\"this.before((this.contentDocument.body||this.contentDocument).children[0]);this.remove()\"></iframe>\n";
             out.write(s)?;
         }  else {
+
+            
+            let chapters = rc.evaluate(ctx, "@root/chapters").and_then(|c| {
+                serde_json::value::from_value::<Vec<BTreeMap<String, String>>>(c.as_json().clone())
+                    .map_err(|_| RenderError::new("Could not decode the JSON data"))
+            })?;
+
+            if get_log_level() == 3 {
+                println!("a;aha {}", get_log_level());
+                
+
+            } else {
+                println!("a;aha {}", get_log_level())
+            }
+
+            //        println!("a;aha {}", ctx.data());
+            println!("path {}", ctx.data().get("path").unwrap());
+
             out.write("\n<!-- extract begin -->\n")?;
             //let path = build_dir.join("toc.shtml"); 
             // let path = "toc.shtml";
@@ -78,7 +79,7 @@ impl HelperDef for RenderToc {
             let p = Path::new(self.a.to_str()).join("toc.shtml");
             println!("toc: {}",p.to_str().unwrap());
             //let out = 
-        //    let mut out = File::create("/tmp/foo").expect("Unable to create file");
+            //    let mut out = File::create("/tmp/foo").expect("Unable to create file");
             
             let current_path = rc
                 .evaluate(ctx, "@root/path")?
@@ -145,93 +146,93 @@ impl HelperDef for RenderToc {
                             out.write("<ol class=\"section\">")?;
                             current_level += 1;
                         }
-                    write_li_open_tag(out, is_expanded, false)?;
+                        write_li_open_tag(out, is_expanded, false)?;
                     }
-                Ordering::Less => {
-                    while level < current_level {
-                        out.write("</ol>")?;
-                        out.write("</li>")?;
-                        current_level -= 1;
+                    Ordering::Less => {
+                        while level < current_level {
+                            out.write("</ol>")?;
+                            out.write("</li>")?;
+                            current_level -= 1;
+                        }
+                        write_li_open_tag(out, is_expanded, false)?;
                     }
-                    write_li_open_tag(out, is_expanded, false)?;
+                    Ordering::Equal => {
+                        write_li_open_tag(out, is_expanded, item.get("section").is_none())?;
+                    }
                 }
-                Ordering::Equal => {
-                    write_li_open_tag(out, is_expanded, item.get("section").is_none())?;
+
+                // Part title
+                if let Some(title) = item.get("part") {
+                    out.write("<li class=\"part-title\">")?;
+                    out.write(&bracket_escape(title))?;
+                    out.write("</li>")?;
+                    continue;
                 }
-            }
 
-            // Part title
-            if let Some(title) = item.get("part") {
-                out.write("<li class=\"part-title\">")?;
-                out.write(&bracket_escape(title))?;
-                out.write("</li>")?;
-                continue;
-            }
-
-            // Link
-            let path_exists: bool;
-            match item.get("path") {
-                Some(path) if !path.is_empty() => {
-                    out.write("<a href=\"")?;
-                    let tmp = Path::new(path)
-                        .with_extension("html")
-                        .to_str()
-                        .unwrap()
+                // Link
+                let path_exists: bool;
+                match item.get("path") {
+                    Some(path) if !path.is_empty() => {
+                        out.write("<a href=\"")?;
+                        let tmp = Path::new(path)
+                            .with_extension("html")
+                            .to_str()
+                            .unwrap()
                         // Hack for windows who tends to use `\` as separator instead of `/`
-                        .replace('\\', "/");
+                            .replace('\\', "/");
 
-                    // Add link
-                    out.write(&utils::fs::path_to_root(&current_path))?;
-                    out.write(&tmp)?;
-                    out.write("\"")?;
+                        // Add link
+                        out.write(&utils::fs::path_to_root(&current_path))?;
+                        out.write(&tmp)?;
+                        out.write("\"")?;
 
-                    if path == &current_path || is_first_chapter {
-                        is_first_chapter = false;
-                        out.write(" class=\"active\"")?;
+                        if path == &current_path || is_first_chapter {
+                            is_first_chapter = false;
+                            out.write(" class=\"active\"")?;
+                        }
+
+                        out.write(">")?;
+                        path_exists = true;
                     }
-
-                    out.write(">")?;
-                    path_exists = true;
+                    _ => {
+                        out.write("<div>")?;
+                        path_exists = false;
+                    }
                 }
-                _ => {
-                    out.write("<div>")?;
-                    path_exists = false;
+
+                if !self.no_section_label {
+                    // Section does not necessarily exist
+                    if let Some(section) = item.get("section") {
+                        out.write("<strong aria-hidden=\"true\">")?;
+                        out.write(section)?;
+                        out.write("</strong> ")?;
+                    }
                 }
-            }
 
-            if !self.no_section_label {
-                // Section does not necessarily exist
-                if let Some(section) = item.get("section") {
-                    out.write("<strong aria-hidden=\"true\">")?;
-                    out.write(section)?;
-                    out.write("</strong> ")?;
+                if let Some(name) = item.get("name") {
+                    out.write(&bracket_escape(name))?
                 }
-            }
 
-            if let Some(name) = item.get("name") {
-                out.write(&bracket_escape(name))?
-            }
-
-            if path_exists {
-                out.write("</a>")?;
-            } else {
-                out.write("</div>")?;
-            }
-
-            // Render expand/collapse toggle
-            if let Some(flag) = item.get("has_sub_items") {
-                let has_sub_items = flag.parse::<bool>().unwrap_or_default();
-                if fold_enable && has_sub_items {
-                    out.write("<a class=\"toggle\"><div>❱</div></a>")?;
+                if path_exists {
+                    out.write("</a>")?;
+                } else {
+                    out.write("</div>")?;
                 }
+
+                // Render expand/collapse toggle
+                if let Some(flag) = item.get("has_sub_items") {
+                    let has_sub_items = flag.parse::<bool>().unwrap_or_default();
+                    if fold_enable && has_sub_items {
+                        out.write("<a class=\"toggle\"><div>❱</div></a>")?;
+                    }
+                }
+                out.write("</li>")?;
             }
-            out.write("</li>")?;
-        }
-        while current_level > 1 {
-            out.write("</ol>")?;
-            out.write("</li>")?;
-            current_level -= 1;
-        }
+            while current_level > 1 {
+                out.write("</ol>")?;
+                out.write("</li>")?;
+                current_level -= 1;
+            }
 
             out.write("</ol>")?;
             out.write("\n\n<!-- extract end -->\n")?;
