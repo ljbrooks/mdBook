@@ -1,6 +1,8 @@
 use std::path::Path;
 use std::{cmp::Ordering, collections::BTreeMap};
-
+//use std::fs::File;
+use fixedstr::*;
+//use std::fs::{File};
 use crate::utils;
 use crate::utils::bracket_escape;
 
@@ -10,8 +12,22 @@ use handlebars::{Context, Handlebars, Helper, HelperDef, Output, RenderContext, 
 #[derive(Clone, Copy)]
 pub struct RenderToc {
     pub no_section_label: bool,
+    pub a: fstr<1024>,
 }
 
+
+use std::sync::atomic; //::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU8};
+
+static LOG_LEVEL: AtomicU8 = AtomicU8::new(0);
+
+pub fn get_log_level() -> u8 {
+    LOG_LEVEL.load(atomic::Ordering::Relaxed)
+}
+
+pub fn set_log_level(level: u8) {
+    LOG_LEVEL.store(level, atomic::Ordering::Relaxed);
+}
 impl HelperDef for RenderToc {
     fn call<'reg: 'rc, 'rc>(
         &self,
@@ -24,77 +40,113 @@ impl HelperDef for RenderToc {
         // get value from context data
         // rc.get_path() is current json parent path, you should always use it like this
         // param is the key of value you want to display
+        //println!("I am here {}", rc);
+        //rc.done = true;
+ 
         let chapters = rc.evaluate(ctx, "@root/chapters").and_then(|c| {
             serde_json::value::from_value::<Vec<BTreeMap<String, String>>>(c.as_json().clone())
                 .map_err(|_| RenderError::new("Could not decode the JSON data"))
         })?;
-        let current_path = rc
-            .evaluate(ctx, "@root/path")?
-            .as_json()
-            .as_str()
-            .ok_or_else(|| RenderError::new("Type error for `path`, string expected"))?
-            .replace('\"', "");
 
-        let current_section = rc
-            .evaluate(ctx, "@root/section")?
-            .as_json()
-            .as_str()
-            .map(str::to_owned)
-            .unwrap_or_default();
+        if get_log_level() == 3 {
+            println!("a;aha {}", get_log_level());
+            
 
-        let fold_enable = rc
-            .evaluate(ctx, "@root/fold_enable")?
-            .as_json()
-            .as_bool()
-            .ok_or_else(|| RenderError::new("Type error for `fold_enable`, bool expected"))?;
+        } else {
+            println!("a;aha {}", get_log_level())
+        }
 
-        let fold_level = rc
-            .evaluate(ctx, "@root/fold_level")?
-            .as_json()
-            .as_u64()
-            .ok_or_else(|| RenderError::new("Type error for `fold_level`, u64 expected"))?;
+//        println!("a;aha {}", ctx.data());
+        println!("path {}", ctx.data().get("path").unwrap());
 
-        out.write("<ol class=\"chapter\">")?;
+        let d =  ctx.data().get("path").unwrap();
+        //let build_dir = ctx.root.join(&ctx.config.build.build_dir);
+        println!("build_dir : {}", self.a);
 
-        let mut current_level = 1;
-        // The "index" page, which has this attribute set, is supposed to alias the first chapter in
-        // the book, i.e. the first link. There seems to be no easy way to determine which chapter
-        // the "index" is aliasing from within the renderer, so this is used instead to force the
-        // first link to be active. See further below.
-        let mut is_first_chapter = ctx.data().get("is_index").is_some();
-
-        for item in chapters {
-            // Spacer
-            if item.get("spacer").is_some() {
-                out.write("<li class=\"spacer\"></li>")?;
-                continue;
-            }
-
-            let (section, level) = if let Some(s) = item.get("section") {
-                (s.as_str(), s.matches('.').count())
-            } else {
-                ("", 1)
-            };
-
-            let is_expanded =
-                if !fold_enable || (!section.is_empty() && current_section.starts_with(section)) {
-                    // Expand if folding is disabled, or if the section is an
-                    // ancestor or the current section itself.
-                    true
-                } else {
-                    // Levels that are larger than this would be folded.
-                    level - 1 < fold_level as usize
-                };
-
-            match level.cmp(&current_level) {
-                Ordering::Greater => {
-                    while level > current_level {
-                        out.write("<li>")?;
-                        out.write("<ol class=\"section\">")?;
-                        current_level += 1;
-                    }
-                    write_li_open_tag(out, is_expanded, false)?;
+        if d != "index.md" { //get_log_level() == 3 {
+            let s = "\n<iframe src=\"c.shtml\" seamless onload=\"this.before((this.contentDocument.body||this.contentDocument).children[0]);this.remove()\"></iframe>\n";
+            out.write(s)?;
+        }  else {
+            out.write("\n<!-- extract begin -->\n")?;
+            //let path = build_dir.join("toc.shtml"); 
+            // let path = "toc.shtml";
+            // let content = "ABCD";
+            // File::(&path)?.write_all(content).map_err(Into::into);
+            
+            set_log_level(3);
+            
+            let p = Path::new(self.a.to_str()).join("toc.shtml");
+            println!("toc: {}",p.to_str().unwrap());
+            //let out = 
+        //    let mut out = File::create("/tmp/foo").expect("Unable to create file");
+            
+            let current_path = rc
+                .evaluate(ctx, "@root/path")?
+                .as_json()
+                .as_str()
+                .ok_or_else(|| RenderError::new("Type error for `path`, string expected"))?
+                .replace('\"', "");
+            
+            let current_section = rc
+                .evaluate(ctx, "@root/section")?
+                .as_json()
+                .as_str()
+                .map(str::to_owned)
+                .unwrap_or_default();
+            
+            let fold_enable = rc
+                .evaluate(ctx, "@root/fold_enable")?
+                .as_json()
+                .as_bool()
+                .ok_or_else(|| RenderError::new("Type error for `fold_enable`, bool expected"))?;
+            
+            let fold_level = rc
+                .evaluate(ctx, "@root/fold_level")?
+                .as_json()
+                .as_u64()
+                .ok_or_else(|| RenderError::new("Type error for `fold_level`, u64 expected"))?;
+            
+            out.write("<ol class=\"chapter\">")?;
+            
+            let mut current_level = 1;
+            // The "index" page, which has this attribute set, is supposed to alias the first chapter in
+            // the book, i.e. the first link. There seems to be no easy way to determine which chapter
+            // the "index" is aliasing from within the renderer, so this is used instead to force the
+            // first link to be active. See further below.
+            let mut is_first_chapter = ctx.data().get("is_index").is_some();
+            
+            for item in chapters {
+                // Spacer
+                if item.get("spacer").is_some() {
+                    out.write("<li class=\"spacer\"></li>")?;
+                    continue;
                 }
+                
+                let (section, level) = if let Some(s) = item.get("section") {
+                    (s.as_str(), s.matches('.').count())
+                } else {
+                    ("", 1)
+                };
+                
+                let is_expanded =
+                    if !fold_enable || (!section.is_empty() && current_section.starts_with(section)) {
+                        // Expand if folding is disabled, or if the section is an
+                        // ancestor or the current section itself.
+                        true
+                    } else {
+                        // Levels that are larger than this would be folded.
+                        level - 1 < fold_level as usize
+                    };
+                
+                match level.cmp(&current_level) {
+                    Ordering::Greater => {
+                        while level > current_level {
+                            out.write("<li>")?;
+                            out.write("<ol class=\"section\">")?;
+                            current_level += 1;
+                        }
+                    write_li_open_tag(out, is_expanded, false)?;
+                    }
                 Ordering::Less => {
                     while level < current_level {
                         out.write("</ol>")?;
@@ -181,7 +233,9 @@ impl HelperDef for RenderToc {
             current_level -= 1;
         }
 
-        out.write("</ol>")?;
+            out.write("</ol>")?;
+            out.write("\n\n<!-- extract end -->\n")?;
+        }
         Ok(())
     }
 }

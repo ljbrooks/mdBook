@@ -209,6 +209,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "copystr"
+version = "0.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71be6ec1df15c10fd43c5e3eac9880c5c76d84ae292d46902c26384073290901"
+
+[[package]]
 name = "cpufeatures"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -311,6 +317,12 @@ dependencies = [
  "redox_syscall",
  "winapi 0.3.9",
 ]
+
+[[package]]
+name = "fixedstr"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b21ed51d626aedbabede069b12d497d580915e4810fdc2bcefaefda50fbe1c41"
 
 [[package]]
 name = "float-cmp"
@@ -804,8 +816,10 @@ dependencies = [
  "chrono",
  "clap",
  "clap_complete",
+ "copystr",
  "elasticlunr-rs",
  "env_logger",
+ "fixedstr",
  "futures-util",
  "gitignore",
  "handlebars",

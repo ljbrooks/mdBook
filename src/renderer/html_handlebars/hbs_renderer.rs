@@ -1,6 +1,7 @@
 use crate::book::{Book, BookItem};
 use crate::config::{BookConfig, Config, HtmlConfig, Playground, RustEdition};
 use crate::errors::*;
+use fixedstr::*;
 use crate::renderer::html_handlebars::helpers;
 use crate::renderer::{RenderContext, Renderer};
 use crate::theme::{self, playground_editor, Theme};
@@ -331,11 +332,15 @@ impl HtmlHandlebars {
         );
     }
 
-    fn register_hbs_helpers(&self, handlebars: &mut Handlebars<'_>, html_config: &HtmlConfig) {
+    fn register_hbs_helpers(&self, handlebars: &mut Handlebars<'_>, 
+                            html_config: &HtmlConfig,
+                            build_dir : &str,
+    ) {
         handlebars.register_helper(
             "toc",
             Box::new(helpers::toc::RenderToc {
                 no_section_label: html_config.no_section_label,
+                a : fstr::from(build_dir),
             }),
         );
         handlebars.register_helper("previous", Box::new(helpers::navigation::previous));
@@ -521,7 +526,9 @@ impl Renderer for HtmlHandlebars {
         handlebars.register_partial("header", String::from_utf8(theme.header.clone())?)?;
 
         debug!("Register handlebars helpers");
-        self.register_hbs_helpers(&mut handlebars, &html_config);
+        self.register_hbs_helpers(&mut handlebars, &html_config, 
+                                  build_dir.to_str().unwrap(),
+                                  );
 
         let mut data = make_data(&ctx.root, book, &ctx.config, &html_config, &theme)?;
 
@@ -543,7 +550,9 @@ impl Renderer for HtmlHandlebars {
                 edition: ctx.config.rust.edition,
                 chapter_titles: &ctx.chapter_titles,
             };
+            println!("dest: {}", destination.to_path_buf().to_str().unwrap());
             self.render_item(item, ctx, &mut print_content)?;
+            //println!("item: {}", ctx.chapter_titles);
             // Only the first non-draft chapter item should be treated as the "index"
             is_index &= !matches!(item, BookItem::Chapter(ch) if !ch.is_draft_chapter());
         }

@@ -16,7 +16,7 @@ pub fn normalize_path(path: &str) -> String {
 /// Write the given data to a file, creating it first if necessary
 pub fn write_file<P: AsRef<Path>>(build_dir: &Path, filename: P, content: &[u8]) -> Result<()> {
     let path = build_dir.join(filename);
-
+    println!("Gen: {}", path.to_str().unwrap());
     create_file(&path)?.write_all(content).map_err(Into::into)
 }
 
